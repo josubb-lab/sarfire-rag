@@ -143,10 +143,9 @@ def _external_policy_to_allow_external(policy: str) -> Optional[bool]:
     return None
 
 
-def _append_turn(history: List[tuple[str, str]], user_text: str, assistant_text: str) -> List[Dict[str, str]]:
+def _append_turn(history: List[tuple[str, str]], user_text: str, assistant_text: str) -> List[tuple[str, str]]:
     history = history or []
-    history.append({"role": "user", "content": user_text})
-    history.append({"role": "assistant", "content": assistant_text})
+    history.append((user_text, assistant_text))
     return history
 
 
