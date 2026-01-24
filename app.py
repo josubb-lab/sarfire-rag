@@ -12,10 +12,13 @@ SARFIRE-RAG - Interfaz Gradio (MVP estable)
 
 from __future__ import annotations
 
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "FALSE"
+os.environ["CHROMA_TELEMETRY"] = "FALSE"
+
 import gradio as gr
 import sys
 from typing import Any, Dict, List, Optional
-
 sys.path.append("src")
 
 from rag import EmbeddingsGenerator, VectorStore, RAGPipeline

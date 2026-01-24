@@ -7,6 +7,10 @@ from __future__ import annotations
 from typing import List, Dict, Optional
 from pathlib import Path
 
+from .telemetry_utils import disable_chroma_telemetry
+
+disable_chroma_telemetry()
+
 import chromadb
 from chromadb.config import Settings
 import numpy as np
@@ -29,7 +33,7 @@ class VectorStore:
         # Inicializar cliente ChromaDB
         print(f"⚙️  Inicializando ChromaDB en {self.persist_directory}...")
 
-        settings = Settings(anonymized_telemetry=not disable_telemetry)
+        settings = Settings(anonymized_telemetry=False)
         self.client = chromadb.PersistentClient(
             path=str(self.persist_directory),
             settings=settings,
