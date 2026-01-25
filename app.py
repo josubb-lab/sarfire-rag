@@ -267,6 +267,34 @@ def format_sources(result: Dict[str, Any], max_sources: int = 3) -> str:
     return "\n".join(lines)
 
 
+def format_confidence(result: Dict[str, Any]) -> str:
+    score = result.get("relevance_score")
+    if score is None:
+        return ""
+    try:
+        score = float(score)
+    except (TypeError, ValueError):
+        return ""
+    source = result.get("source")
+    sources = result.get("sources") or []
+    count = len(sources)
+    if not (count > 0 or source in {"internal", "external"}):
+        return ""
+    if score >= 0.40:
+        color = "VERDE"
+    elif score >= 0.30:
+        color = "ÁMBAR"
+    else:
+        color = "ROJO"
+    if source == "internal":
+        mode = "Interno"
+    elif source == "external":
+        mode = "Externo"
+    else:
+        mode = "Sin evidencia"
+    return f"Confianza: {color} ({score:.3f}) · Modo: {mode} · Fuentes: {count}\n\n"
+
+
 def _simulador_create(simulador: Any, topic: str, allow_external: Optional[bool]) -> Dict[str, Any]:
     """Compatibilidad para SimuladorAgent: create_scenario / create / generate / run.
     Retorna dict esperado por la app.
@@ -389,7 +417,7 @@ def process_message(
         if kind == "formador_web":
             # Formador: si el usuario acepta, forzamos allow_external=True, si no, False
             result = _formador_answer(formador, rag, question=payload, allow_external=True if yes else False)
-            response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
+            response = "**🎓 AGENTE FORMADOR**\n\n" + format_confidence(result) + (result.get("answer") or "")
             if result.get("disclaimer"):
                 response += "\n\n" + result["disclaimer"]
             response += format_sources(result)
@@ -445,13 +473,13 @@ def process_message(
         result = _formador_answer(formador, rag, question=message, allow_external=allow_external)
         if result.get("should_ask_user"):
             state["pending"] = {"active": True, "kind": "formador_web", "payload": message}
-            response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
+            response = "**🎓 AGENTE FORMADOR**\n\n" + format_confidence(result) + (result.get("answer") or "")
             response += "\n\n" + result.get("question_for_user", "¿Deseas que busque en fuentes externas? Responde 'sí' o 'no'.")
             response += format_sources(result)
             history = _append_turn(history, message, response)
             return history, "", state
 
-        response = "**🎓 AGENTE FORMADOR**\n\n" + ambiguity_note + (result.get("answer") or "")
+        response = "**🎓 AGENTE FORMADOR**\n\n" + format_confidence(result) + ambiguity_note + (result.get("answer") or "")
         if result.get("disclaimer"):
             response += "\n\n" + result["disclaimer"]
         response += format_sources(result)
@@ -486,13 +514,13 @@ def process_message(
     result = _formador_answer(formador, rag, question=message, allow_external=allow_external)
     if result.get("should_ask_user"):
         state["pending"] = {"active": True, "kind": "formador_web", "payload": message}
-        response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
+        response = "**🎓 AGENTE FORMADOR**\n\n" + format_confidence(result) + (result.get("answer") or "")
         response += "\n\n" + result.get("question_for_user", "¿Deseas que busque en fuentes externas? Responde 'sí' o 'no'.")
         response += format_sources(result)
         history = _append_turn(history, message, response)
         return history, "", state
 
-    response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
+    response = "**🎓 AGENTE FORMADOR**\n\n" + format_confidence(result) + (result.get("answer") or "")
     if result.get("disclaimer"):
         response += "\n\n" + result["disclaimer"]
     response += format_sources(result)
