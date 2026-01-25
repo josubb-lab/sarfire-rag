@@ -59,13 +59,62 @@ def _director_analyze(director: Any, message: str) -> Dict[str, Any]:
     """Intenta usar el método de análisis disponible en DirectorAgent.
     Compatibilidad: analyze_query / analyze_request / route / decide / recommend_agent.
     """
+    sim_keywords = ["simulacro", "escenario", "juego de rol", "roleplay", "rol"]
+    form_keywords = ["definicion", "definición", "procedimiento", "protocolo", "teoría", "concepto", "qué es", "que es", "pasos", "instrucciones"]
+    m = message.lower()
     for name in ("analyze_query", "analyze_request", "analyze", "route_query", "route", "decide", "recommend_agent"):
         fn = getattr(director, name, None)
         if callable(fn):
             try:
                 out = fn(message)
                 if isinstance(out, dict):
-                    return out
+                    normalized = dict(out)
+                    agent_val = normalized.get("recommended_agent") or normalized.get("agent") or normalized.get("label")
+                    if isinstance(agent_val, str):
+                        agent_val = agent_val.strip().upper()
+                        if agent_val == "SIMULADOR":
+                            normalized["recommended_agent"] = "SIMULADOR"
+                        elif agent_val == "FORMADOR":
+                            normalized["recommended_agent"] = "FORMADOR"
+                        elif agent_val == "AMBIGUO":
+                            normalized["recommended_agent"] = "AMBIGUO"
+
+                    if "recommended_agent" not in normalized and isinstance(out.get("agent"), str):
+                        agent_lower = out["agent"].strip().lower()
+                        if agent_lower == "simulador":
+                            normalized["recommended_agent"] = "SIMULADOR"
+                        elif agent_lower == "formador":
+                            normalized["recommended_agent"] = "FORMADOR"
+                        elif agent_lower == "ambiguo":
+                            normalized["recommended_agent"] = "AMBIGUO"
+
+                    if "confidence" not in normalized:
+                        normalized["confidence"] = "media"
+                    confidence = normalized.get("confidence", "media")
+                    if isinstance(confidence, (int, float)):
+                        if confidence >= 0.66:
+                            confidence = "alta"
+                        elif confidence >= 0.33:
+                            confidence = "media"
+                        else:
+                            confidence = "baja"
+                        normalized["confidence"] = confidence
+                    if isinstance(confidence, str):
+                        confidence = confidence.strip().lower()
+                        normalized["confidence"] = confidence
+                    intent = normalized.get("recommended_agent")
+
+                    if not intent or intent == "AMBIGUO" or confidence == "baja":
+                        matched_sim = [k for k in sim_keywords if k in m]
+                        matched_form = [k for k in form_keywords if k in m]
+                        if matched_sim:
+                            normalized["recommended_agent"] = "SIMULADOR"
+                            normalized["rule_keywords"] = matched_sim
+                        elif matched_form:
+                            normalized["recommended_agent"] = "FORMADOR"
+                            normalized["rule_keywords"] = matched_form
+
+                    return normalized
             except TypeError:
                 # algunos métodos pueden requerir firma distinta; ignoramos y probamos el siguiente
                 pass
@@ -74,10 +123,23 @@ def _director_analyze(director: Any, message: str) -> Dict[str, Any]:
                 pass
 
     # Fallback heurístico (MVP)
-    m = message.lower()
-    if any(k in m for k in ("simulacro", "escenario", "juego de rol", "roleplay", "intervención")):
-        return {"recommended_agent": "SIMULADOR", "confidence": "media", "reason": "Fallback heurístico: solicitud de simulacro/escenario."}
-    return {"recommended_agent": "FORMADOR", "confidence": "media", "reason": "Fallback heurístico: consulta conceptual/informativa."}
+    matched_sim = [k for k in sim_keywords if k in m]
+    if matched_sim:
+        return {
+            "recommended_agent": "SIMULADOR",
+            "confidence": "media",
+            "reason": "Fallback heurístico: solicitud de simulacro/escenario.",
+            "rule_keywords": matched_sim,
+        }
+    matched_form = [k for k in form_keywords if k in m]
+    if matched_form:
+        return {
+            "recommended_agent": "FORMADOR",
+            "confidence": "media",
+            "reason": "Fallback heurístico: consulta conceptual/informativa.",
+            "rule_keywords": matched_form,
+        }
+    return {"recommended_agent": "AMBIGUO", "confidence": "baja", "reason": "Fallback heurístico: intención no clara."}
 
 
 def _formador_answer(formador: Any, rag: Any, question: str, allow_external: Optional[bool]) -> Dict[str, Any]:
@@ -325,7 +387,16 @@ def process_message(
     # 3) Ruteo por agente
     if agent_choice == "Director":
         analysis = _director_analyze(director, message)
-        target = analysis.get("recommended_agent", "FORMADOR")
+        intent = analysis.get("recommended_agent", "FORMADOR")
+        confidence = analysis.get("confidence", "media")
+        rule_keywords = analysis.get("rule_keywords") or []
+        target = intent if intent in {"SIMULADOR", "FORMADOR"} else "FORMADOR"
+        print(f"🧭 Director intent={intent} confidence={confidence} route={target} keywords={rule_keywords}")
+
+        ambiguity_note = ""
+        if intent == "AMBIGUO":
+            ambiguity_note = "⚠️ La intención parece ambigua o fuera de dominio. Respondo como Formador; si buscas un simulacro, indícalo.\n\n"
+
         if target == "SIMULADOR":
             sim_result = _simulador_create(simulador, topic=message, allow_external=allow_external)
             if sim_result.get("should_ask_user"):
@@ -360,7 +431,7 @@ def process_message(
             history = _append_turn(history, message, response)
             return history, "", state
 
-        response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
+        response = "**🎓 AGENTE FORMADOR**\n\n" + ambiguity_note + (result.get("answer") or "")
         if result.get("disclaimer"):
             response += "\n\n" + result["disclaimer"]
         response += format_sources(result)
