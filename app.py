@@ -422,4 +422,11 @@ with gr.Blocks(title="SARFIRE-RAG (MVP)") as demo:
 
     msg.submit(process_message, inputs=[msg, chatbot, agent_choice, external_policy, state], outputs=[chatbot, msg, state])
 
+    with gr.Row():
+        clear_chat = gr.Button("Limpiar chat")
+        reset_state = gr.Button("Reiniciar estado")
+
+    clear_chat.click(lambda: ([], ""), outputs=[chatbot, msg])
+    reset_state.click(lambda: ([], "", {}), outputs=[chatbot, msg, state])
+
 demo.launch()
