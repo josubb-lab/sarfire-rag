@@ -54,6 +54,26 @@ def initialize_system() -> Dict[str, Any]:
 
 SYS = initialize_system()
 
+EXAMPLES = {
+    "Director": [
+        "¿Cuál es el protocolo básico para el ataque inicial a un incendio forestal?",
+        "Simula un escenario de incendio de interfaz y toma de decisiones del jefe de cuadrilla.",
+        "¿Qué me recomiendas para preparar una barbacoa en el bosque?",
+    ],
+    "Formador": [
+        "¿Cuál es el procedimiento de seguridad al trabajar con motosierras en incendios forestales?",
+        "Define el comportamiento del fuego en pendientes pronunciadas.",
+        "Pasos para establecer una línea de defensa segura en un incendio forestal.",
+        "¿Qué EPP es obligatorio para operaciones en incendios forestales?",
+    ],
+    "Simulador": [
+        "Propón un simulacro de incendio forestal en zona de interfaz urbano-forestal.",
+        "Escenario de evacuación por incendio con recursos limitados: ¿qué harías?",
+        "Roleplay: soy jefe de brigada, plantea una situación crítica y evalúa mi respuesta.",
+        "Simula un caso de reactivación nocturna del fuego y pide mi decisión.",
+    ],
+}
+
 
 def _director_analyze(director: Any, message: str) -> Dict[str, Any]:
     """Intenta usar el método de análisis disponible en DirectorAgent.
@@ -489,6 +509,9 @@ with gr.Blocks(title="SARFIRE-RAG (MVP)") as demo:
 
     chatbot = gr.Chatbot(label="Conversación")
     msg = gr.Textbox(label="Mensaje", placeholder="Escribe aquí…", lines=2)
+
+    gr.Markdown("### Ejemplos rápidos")
+    examples = gr.Dropdown(choices=EXAMPLES["Director"], label="Ejemplos", value=None)
     state = gr.State({})
 
     msg.submit(process_message, inputs=[msg, chatbot, agent_choice, external_policy, state], outputs=[chatbot, msg, state])
@@ -499,5 +522,12 @@ with gr.Blocks(title="SARFIRE-RAG (MVP)") as demo:
 
     clear_chat.click(lambda: ([], ""), outputs=[chatbot, msg])
     reset_state.click(lambda: ([], "", {}), outputs=[chatbot, msg, state])
+
+    agent_choice.change(
+        lambda a: gr.update(choices=EXAMPLES.get(a, []), value=None),
+        inputs=[agent_choice],
+        outputs=[examples],
+    )
+    examples.change(lambda ex: ex or "", inputs=[examples], outputs=[msg])
 
 demo.launch()
