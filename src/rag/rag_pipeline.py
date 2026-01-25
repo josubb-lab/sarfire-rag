@@ -176,6 +176,59 @@ RESPUESTA:"""
         )
         return {"answer": response.text, "prompt_tokens": len(prompt.split())}
 
+    def _llm_error_response(
+        self,
+        question: str,
+        retrieved_chunks: List[Dict],
+        relevance: float,
+    ) -> Dict:
+        if retrieved_chunks:
+            top_chunk = retrieved_chunks[0]
+            raw_text = (top_chunk.get("text") or "").strip()
+            extract = raw_text[:400]
+            if raw_text and len(raw_text) > 400:
+                extract += "..."
+            answer = (
+                "⚠️ No pude generar la respuesta con el modelo en este momento. "
+                "Aquí tienes un extracto de los manuales recuperados:"
+            )
+            if extract:
+                answer += f"\n\n{extract}"
+            else:
+                answer += "\n\n(No hay extractos disponibles; revisa las fuentes.)"
+
+            return {
+                "question": question,
+                "answer": answer,
+                "source": "internal",
+                "sources": [
+                    {
+                        "filename": c.get("metadata", {}).get("filename"),
+                        "page": c.get("metadata", {}).get("page_num"),
+                        "similarity": c.get("similarity"),
+                        "hybrid_score": c.get("hybrid_score"),
+                        "text_preview": c.get("text", "")[:200],
+                    }
+                    for c in retrieved_chunks[:5]
+                ],
+                "relevance_score": relevance,
+                "metadata": {
+                    "chunks_retrieved": len(retrieved_chunks),
+                    "model": self.model_name,
+                    "temperature": self.temperature,
+                },
+            }
+
+        return {
+            "question": question,
+            "answer": (
+                "No encuentro esa información en los manuales. "
+                "Si dispones de búsqueda externa, puedes activarla para intentar obtener más contexto."
+            ),
+            "source": "none",
+            "relevance_score": relevance,
+        }
+
     def query(
         self,
         question: str,
@@ -201,7 +254,11 @@ RESPUESTA:"""
 
             context = self.format_context(retrieved_chunks)
             print(f"\n🤖 Generando respuesta con {self.model_name}...")
-            generation_result = self.generate(question, context, is_external=False)
+            try:
+                generation_result = self.generate(question, context, is_external=False)
+            except Exception as e:
+                print(f"⚠️ Error en Gemini: {type(e).__name__}: {e}")
+                return self._llm_error_response(question, retrieved_chunks, relevance)
 
             return {
                 "question": question,
@@ -259,7 +316,11 @@ RESPUESTA:"""
         if not external_results.get("success") or not external_results.get("results"):
             print("❌ Búsqueda externa falló - usando interno")
             context = self.format_context(retrieved_chunks)
-            generation_result = self.generate(question, context, is_external=False)
+            try:
+                generation_result = self.generate(question, context, is_external=False)
+            except Exception as e:
+                print(f"⚠️ Error en Gemini: {type(e).__name__}: {e}")
+                return self._llm_error_response(question, retrieved_chunks, relevance)
             return {
                 "question": question,
                 "answer": generation_result["answer"],
@@ -280,7 +341,11 @@ RESPUESTA:"""
 
         print(f"✅ Encontrados {len(external_results['results'])} resultados externos")
         context = self.format_external_context(external_results)
-        generation_result = self.generate(question, context, is_external=True)
+        try:
+            generation_result = self.generate(question, context, is_external=True)
+        except Exception as e:
+            print(f"⚠️ Error en Gemini: {type(e).__name__}: {e}")
+            return self._llm_error_response(question, retrieved_chunks, relevance)
 
         return {
             "question": question,
