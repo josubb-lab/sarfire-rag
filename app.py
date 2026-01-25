@@ -167,6 +167,23 @@ def _format_evidence(evidence: List[Dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def format_sources(result: Dict[str, Any], max_sources: int = 3) -> str:
+    sources = result.get("sources") or []
+    if not sources:
+        return ""
+    lines = ["", "---", f"Fuentes (top {min(max_sources, len(sources))}):"]
+    for src in sources[:max_sources]:
+        fn = src.get("filename") or "N/A"
+        pg = src.get("page")
+        score = src.get("hybrid_score")
+        if score is None:
+            score = src.get("similarity")
+        if pg is not None:
+            lines.append(f"- {fn} (p. {pg}) — score: {score}")
+        else:
+            lines.append(f"- {fn} — score: {score}")
+    return "\n".join(lines)
+
 
 def _simulador_create(simulador: Any, topic: str, allow_external: Optional[bool]) -> Dict[str, Any]:
     """Compatibilidad para SimuladorAgent: create_scenario / create / generate / run.
@@ -293,6 +310,7 @@ def process_message(
             response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
             if result.get("disclaimer"):
                 response += "\n\n" + result["disclaimer"]
+            response += format_sources(result)
             history = _append_turn(history, message, response)
             return history, "", state
 
@@ -338,12 +356,14 @@ def process_message(
             state["pending"] = {"active": True, "kind": "formador_web", "payload": message}
             response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
             response += "\n\n" + result.get("question_for_user", "¿Deseas que busque en fuentes externas? Responde 'sí' o 'no'.")
+            response += format_sources(result)
             history = _append_turn(history, message, response)
             return history, "", state
 
         response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
         if result.get("disclaimer"):
             response += "\n\n" + result["disclaimer"]
+        response += format_sources(result)
         history = _append_turn(history, message, response)
         return history, "", state
 
@@ -377,12 +397,14 @@ def process_message(
         state["pending"] = {"active": True, "kind": "formador_web", "payload": message}
         response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
         response += "\n\n" + result.get("question_for_user", "¿Deseas que busque en fuentes externas? Responde 'sí' o 'no'.")
+        response += format_sources(result)
         history = _append_turn(history, message, response)
         return history, "", state
 
     response = "**🎓 AGENTE FORMADOR**\n\n" + (result.get("answer") or "")
     if result.get("disclaimer"):
         response += "\n\n" + result["disclaimer"]
+    response += format_sources(result)
     history = _append_turn(history, message, response)
     return history, "", state
 
