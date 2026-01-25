@@ -292,7 +292,19 @@ def format_confidence(result: Dict[str, Any]) -> str:
         mode = "Externo"
     else:
         mode = "Sin evidencia"
-    return f"Confianza: {color} ({score:.3f}) · Modo: {mode} · Fuentes: {count}\n\n"
+    answer = (result.get("answer") or "").strip()
+    if answer.startswith("⚠️ No pude generar"):
+        status = "LLM KO"
+    elif (source not in {"internal", "external"}) and count == 0:
+        status = "Sin soporte"
+    elif "No encuentro" in answer or "No hay una sección explícita" in answer:
+        status = "Sin soporte"
+    else:
+        status = "OK"
+    header = f"Evidencia: {color} ({score:.3f}) · Modo: {mode} · Fuentes: {count} · Respuesta: {status}"
+    if status == "Sin soporte" and count > 0:
+        header += " · Sugerencia: reformula con términos del manual"
+    return header + "\n\n"
 
 
 def _simulador_create(simulador: Any, topic: str, allow_external: Optional[bool]) -> Dict[str, Any]:
