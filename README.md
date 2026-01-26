@@ -31,6 +31,10 @@ python app.py
 
 SARFIRE-RAG se ha diseñado como un MVP funcional orientado a apoyar formación y simulación en el ámbito de emergencias forestales, partiendo de documentación técnica real.
 
+Aunque este MVP está especializado en emergencias forestales, la arquitectura es reutilizable con cualquier corpus documental técnico tras reindexar los documentos.
+
+El desarrollo se ha realizado en entorno local WSL con Python, apoyado por herramientas de asistencia a programación (Cursor/Codex/LLMs) para acelerar iteraciones, manteniendo siempre control humano sobre arquitectura, decisiones técnicas y validación.
+
 ### Problema abordado
 
 La información crítica para bomberos suele encontrarse dispersa en manuales extensos, poco accesibles en situaciones formativas o de consulta rápida. SARFIRE-RAG busca transformar esa documentación estática en un sistema interactivo capaz de responder, formar y simular.
