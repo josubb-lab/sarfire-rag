@@ -157,7 +157,7 @@ Estas pruebas permiten confirmar que el sistema cumple su objetivo como demostra
 - La búsqueda externa es opcional y requiere Tavily.
 - No sustituye protocolos oficiales ni decisiones operativas reales.
 
-## 🎥 Vídeo de demostración
+# 🎥 Vídeo de demostración
 
 Demostración completa del funcionamiento de SARFIRE-RAG (MVP), incluyendo:
 - Enrutamiento por agentes (Director, Formador, Simulador)
