@@ -28,36 +28,27 @@ Tres modos de uso, tres agentes especializados:
 
 ## Arquitectura del sistema
 
-```
-┌─────────────────────────────────────────────┐
-│              FRONTEND (Gradio)               │
-│   Modo: Automático / Formador / Simulador   │
-└──────────────────────┬──────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────┐
-│           AGENTE DIRECTOR                    │
-│   Clasifica intención → enruta al agente    │
-└──────┬───────────────────────────┬──────────┘
-       │                           │
-┌──────▼──────┐           ┌────────▼────────┐
-│   FORMADOR  │           │   SIMULADOR     │
-│ Explicación │           │ Escenarios rol  │
-│ pedagógica  │           │ + evaluación    │
-└──────┬──────┘           └────────┬────────┘
-       │                           │
-┌──────▼───────────────────────────▼────────┐
-│              RAG PIPELINE                  │
-│  Retrieval híbrido (semántico + keywords)  │
-│  ChromaDB ← embeddings all-MiniLM-L6-v2   │
-│  Generación: Gemini 2.0 Flash (T=0.3)     │
-└──────────────────┬─────────────────────────┘
-                   │
-     ┌─────────────▼──────────────┐
-     │   ¿Relevancia > 0.3?       │
-     │   SÍ → Respuesta con fuente│
-     │   NO → Fallback Tavily /   │
-     │         Reformula pregunta │
-     └────────────────────────────┘
+```mermaid
+flowchart TD
+    UI["🖥️ Interfaz Gradio\nAutomático / Formador / Simulador"]
+    DIR["🎯 Agente Director\nClasifica intención y enruta"]
+    FORM["📚 Agente Formador\nExplicaciones pedagógicas"]
+    SIM["🎭 Agente Simulador\nEscenarios de roleplay"]
+    RAG["⚙️ RAG Pipeline\nRetrieval híbrido · ChromaDB · Gemini 2.0 Flash"]
+    REL{"¿Relevancia > 0.3?"}
+    OK["✅ Respuesta con fuente\nTrazable al manual"]
+    FALLBACK["🌐 Fallback Tavily\nBúsqueda externa opcional"]
+    DOCS["📄 5 formatos\nPDF · DOCX · TXT · HTML · CSV\n443 chunks"]
+
+    UI --> DIR
+    DIR --> FORM
+    DIR --> SIM
+    FORM --> RAG
+    SIM --> RAG
+    DOCS --> RAG
+    RAG --> REL
+    REL -->|Sí| OK
+    REL -->|No| FALLBACK
 ```
 
 El flujo completo, desde que el usuario escribe hasta que recibe respuesta, pasa siempre por el RAG. No hay respuesta sin respaldo documental.
