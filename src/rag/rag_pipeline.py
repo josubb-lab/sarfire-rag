@@ -1,6 +1,9 @@
 """
 RAG Pipeline para SARFIRE-RAG
 Integra recuperación (ChromaDB) + generación (Gemini) + Fallback externo (Tavily)
+
+Ingesta / indexación de documentos: ejecutar `tools/build_index.py`, que usa
+`document_loaders.MultiFormatLoader.load_all()` sobre `data/raw/` (no en este módulo).
 """
 from __future__ import annotations
 

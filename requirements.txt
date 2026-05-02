@@ -9,6 +9,9 @@ google-generativeai==0.3.2
 
 # Document Processing
 pypdf==4.0.1
+python-docx>=1.1.0
+beautifulsoup4>=4.12.0
+pandas>=2.0.0
 
 # UI
 gradio==4.16.0
